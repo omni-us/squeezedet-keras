@@ -52,7 +52,6 @@ arguments you can pass
 
 	`find /path/to/training/label_2/ -name "*txt" | sort > labels.txt`
 
-
 * Create a training test split
 
 
@@ -72,8 +71,6 @@ arguments you can pass
 * Run training, this starts with pre-trained weights from imagenet
 
 	`python ../../scripts/train.py --init ../../main/model/imagenet.h5`
-
-
 
 * In another shell, to run evaluation
 
