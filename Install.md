@@ -20,7 +20,7 @@
 
 * Start virtualenv
 
-	`source env/bin/activate`
+	`source venv/bin/activate`
 	
 * Install dependencies
 
