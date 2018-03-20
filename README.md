@@ -3,42 +3,9 @@
 
 ## Keras/tensorflow implementation of SqueezeDet in Python 3 ##
 
-## How do I get set up? ###
+### Installation ###
 
-* Clone repository
-
-	`git clone `
-
-* Install pip3 and virtualenv, creater a virtualenv inside the repository folder
-
-	`sudo apt-get install python3-pip`
-
-	`pip3 install virtualenv`
-
-	`cd squeezedet`
-
-	`virtualenv -p python3 env`
-	
-* Add the project to the **env/bin/activate** of the virtualenv so the modules can be found
-
-	
-	`export PYTHONPATH=path/to/squeezedet`
-
-* Start virtualenv
-
-	`source env/bin/activate`
-	
-* Install dependencies
-
-	`pip install -r requirements.txt`
-	
-* Optionally: If you want to use GPU install CUDA 8.0 with CUDNN 6.0. 
-
-	* Get newest NVIDIA drivers for you GPU. 
-	* I only tested on Ubuntu 16.04. For this I recommend getting the base installer run file from [here](https://developer.nvidia.com/cuda-80-ga2-download-archive) . Run this and do not install the drivers when you have to choose. If you install from paket manager other CUDA version might be overwritten.
-	* Create a NVDIA developer account [here](https://developer.nvidia.com/cudnn). Download the CUDNN 6.0 files for CUDA 8.0. I recommend storing them seperatly and adding them in the .bashrc to your LD_LIBRARY_PATH as suggested [here](http://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html)
-
-
+Please have a look at our [Installation Guide](https://github.com/omni-us/squeezedet-keras/blob/master/Install.md)
 
 ### How do I run it? ###
 
