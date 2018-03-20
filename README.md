@@ -101,4 +101,29 @@ after another. Check out the dummy **scripts/schedule.config** for an example. R
 
 
 
+### Tensorboard visualization
+
+For tensoboard visualization you can can run:
+
+
+`tensorboard --logdir log`
+
+Open in your brower  **localhost:6006** or the IP where you ran the training. On the first page you can see the losses, sublosses and metrics like mean average precision and f1 scores.
+
+![Image not found](images/scalar.png?raw=true "Scalars")
+
+
+On the second page, you find visualizations of a couple of validation images with their ground truth bounding boxes and how the predictions change over the course of the training.
+
+
+![Image not found](images/visualization.png?raw=true "Scalars")
+
+The third page gives you a nice view over the network graph.
+
+![Image not found](images/graph.png?raw=true "Graph")
+
+
+
+
+
 
