@@ -11,6 +11,16 @@ import numpy as np
 
 
 def visualize(model, generator, config):
+    """Creates images with ground truth and from the model predicted boxes.
+    
+    Arguments:
+        model {[type]} -- SqueezeDet Model
+        generator {[type]} -- data generator yielding images and ground truth
+        config {[type]} --  dict of various hyperparameters
+    
+    Returns:
+        [type] -- numpy array of images with ground truth and prediction boxes added
+    """
 
 
     #this is needed, if batch size is smaller than visualization batch size
@@ -58,6 +68,17 @@ def visualize(model, generator, config):
 
 
 def visualize_dt_and_gt(images, y_true, y_pred, config):
+    """Takes a batch of images and creates bounding box visualization on top
+    
+    Arguments:
+        images {[type]} -- numpy tensor of images
+        y_true {[type]} -- tensor of ground truth
+        y_pred {[type]} -- tensor of predictions
+        config {[type]} -- dict of various hyperparameters
+    
+    Returns:
+        [type] -- dict of various hyperparameters
+    """
 
 
     #normalize for printing

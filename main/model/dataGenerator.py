@@ -34,7 +34,7 @@ def threadsafe_generator(f):
         return threadsafe_iter(f(*a, **kw))
     return g
 
-
+#we could maybe use the standard data generator from keras?
 def read_image_and_gt(img_files, gt_files, config):
     '''
     Transform images and send transformed image and label
@@ -584,15 +584,9 @@ def generator_from_data_path(img_names, gt_names, config, return_filenames=False
     Generator that yields (X, Y)
     :param img_names: list of images names with full path
     :param gt_names: list of gt names with full path
-    :param config
-    :return:
+    :param config: config dict containing various hyperparameters
+    :return: a generator yielding images and ground truths
    """
-    """
-    Each epoch will only process an integral number of batch_size
-    # but with the shuffling of list at the top of each epoch, we will
-    # see all training samples eventually, but will skip an amount
-    # less than batch_size during each epoch
-    """
 
 
     assert len(img_names) == len(gt_names), "Number of images and ground truths not equal"
@@ -602,6 +596,13 @@ def generator_from_data_path(img_names, gt_names, config, return_filenames=False
         shuffled = list(zip(img_names, gt_names))
         random.shuffle(shuffled)
         img_names, gt_names = zip(*shuffled)
+
+    """
+    Each epoch will only process an integral number of batch_size
+    but with the shuffling of list at the top of each epoch, we will
+    see all training samples eventually, but will skip an amount
+    less than batch_size during each epoch
+    """
 
 
     nbatches, n_skipped_per_epoch = divmod(len(img_names), config.BATCH_SIZE)
@@ -654,16 +655,16 @@ def visualization_generator_from_data_path(img_names, gt_names, config, return_f
     :param config
     :return:
    """
+
+
+    assert len(img_names) == len(gt_names), "Number of images and ground truths not equal"
+
     """
     Each epoch will only process an integral number of batch_size
     # but with the shuffling of list at the top of each epoch, we will
     # see all training samples eventually, but will skip an amount
     # less than batch_size during each epoch
     """
-
-
-    assert len(img_names) == len(gt_names), "Number of images and ground truths not equal"
-
 
 
     nbatches, n_skipped_per_epoch = divmod(len(img_names), config.BATCH_SIZE)

@@ -20,6 +20,11 @@ import tensorflow as tf
 class SqueezeDet():
     #initialize model from config file
     def __init__(self, config):
+        """Init of SqueezeDet Class
+        
+        Arguments:
+            config {[type]} -- dict containing hyperparameters for network building
+        """
 
         #hyperparameter config file
         self.config = config
@@ -145,11 +150,6 @@ class SqueezeDet():
         padding = np.zeros((3,2))
         padding[2,1] = 4
         return tf.pad(input, padding ,"CONSTANT")
-
-
-    def _slice(self, input):
-
-        return input[:, :, 0:10]
 
 
 
@@ -448,7 +448,7 @@ class SqueezeDet():
         return class_loss
 
 
-    #loss function again, used for metrics to show loss without regularization cost
+    #loss function again, used for metrics to show loss without regularization cost, just of copy of the original loss
     def loss_without_regularization(self, y_true, y_pred):
         """
         squeezeDet loss function for object detection and classification

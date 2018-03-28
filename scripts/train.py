@@ -22,6 +22,7 @@ import pickle
 from main.config.create_config import load_dict
 
 #global variables can be set by optional arguments
+#TODO: Makes proper variables in train() instead of global arguments.
 img_file = "img_train.txt"
 gt_file = "gt_train.txt"
 log_dir_name = './log'
@@ -39,7 +40,7 @@ CONFIG = "squeeze.config"
 
 
 def train():
-    """Def trains a keras model of squeezeDet and stores the checkpoint after each epoch
+    """Def trains a Keras model of SqueezeDet and stores the checkpoint after each epoch
     """
 
 

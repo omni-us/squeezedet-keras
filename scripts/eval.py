@@ -21,6 +21,7 @@ from keras.utils import multi_gpu_model
 from main.config.create_config import load_dict
 
 #default values for some variables
+#TODO: uses them as proper parameters instead of global variables
 img_file = "img_val.txt"
 gt_file = "gt_val.txt"
 img_file_test = "img_test.txt"
@@ -42,7 +43,8 @@ TESTING = False
 
 def eval():
     """
-    Checks for keras checkpoints in a tensorflow dir and evaluates them
+    Checks for keras checkpoints in a tensorflow dir and evaluates losses and given metrics. Also creates visualization and
+    writes everything to tensorboard.
     """
 
     #create config object

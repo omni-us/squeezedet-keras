@@ -13,8 +13,18 @@ import os
 
 
 
-def kfold_datasplit(img_file = "/home/cehmann/data/Dataset/Frankstahl/training/img.txt", gt_file="/home/cehmann/data/Dataset/Frankstahl/training/gt.txt"
+def kfold_datasplit(img_file = "images.txt", gt_file="labels.txt"
                     , k = 5, percent_train = 80, percent_val = 20, percent_test = 0):
+    """Given a two files containing the list of images and ground truth , create a k fold datasplit and save in txt
+    
+    Keyword Arguments:
+        img_file {str} -- file name containing image paths (default: {"images.txt})
+        gt_file {str} -- file name containing ground truth paths (default: {"labels.txt"})
+        k {int} -- number of splits (default: {5})
+        percent_train {int} -- Percent of training set (default: {80})
+        percent_val {int} -- Percent of validation set(default: {20})
+        percent_test {int} --  Percent of training set (default: {0})
+    """
 
 
 

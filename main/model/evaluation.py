@@ -468,10 +468,29 @@ def filter_prediction(boxes, probs, cls_idx, config):
 
 
 def precision(tp,fp):
+    """Computes precision for an array of true positives and false positives
+    
+    Arguments:
+        tp {[type]} -- True positives
+        fp {[type]} -- False positives
+    
+    Returns:
+        [type] -- Precision
+    """
+
     return tp / (tp+fp+1e-10)
 
 
 def recall(tp,fn):
+    """Computes recall  for an array of true positives and false negatives
+    
+    Arguments:
+        tp {[type]} -- True positives
+        fn {function} -- False negatives
+    
+    Returns:
+        [type] -- Recalll
+
     return tp / (tp+fn+1e-10)
 
 

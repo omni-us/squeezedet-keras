@@ -1,8 +1,7 @@
 # Project: squeezeDetOnKeras
 # Filename: multi_gpu_model_checkpoint
-# Author: Olivier Philip
+# Author: Olivier Philip, answer on stackoverflow
 # Date: 10.01.18
-# Organisation: searchInk
 
 import numpy as np
 from keras.callbacks import Callback
