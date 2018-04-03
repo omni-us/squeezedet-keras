@@ -228,7 +228,7 @@ def safe_exp(w, thresh):
 
 
 def safe_exp_np(w, thresh):
-  """Safe exponential function for tensors."""
+  """Safe exponential function for numpy tensors."""
 
   slope = np.exp(thresh)
   lin_bool = w > thresh
@@ -247,6 +247,19 @@ def safe_exp_np(w, thresh):
 
 
 def boxes_from_deltas(pred_box_delta, config):
+    """
+    Converts prediction deltas to bounding boxes
+    
+    Arguments:
+        pred_box_delta {[type]} -- tensor of deltas
+        config {[type]} -- hyperparameter dict
+    
+    Returns:
+        [type] -- tensor of bounding boxes
+    """
+
+
+
     # Keras backend allows no unstacking
 
     delta_x = pred_box_delta[:, :, 0]
@@ -296,6 +309,19 @@ def boxes_from_deltas(pred_box_delta, config):
 
 
 def boxes_from_deltas_np(pred_box_delta, config):
+
+    """
+    Converts prediction deltas to bounding boxes, but in numpy
+    
+    Arguments:
+        pred_box_delta {[type]} -- tensor of deltas
+        config {[type]} -- hyperparameter dict
+    
+    Returns:
+        [type] -- tensor of bounding boxes
+    """
+
+
     # Keras backend allows no unstacking
 
     delta_x = pred_box_delta[:, :, 0]
@@ -438,7 +464,18 @@ def slice_predictions_np(y_pred, config):
 
 
 def tensor_iou(box1, box2, input_mask, config):
+    """Computes pairwise IOU of two lists of boxes
     
+    Arguments:
+        box1 {[type]} -- First list of boxes
+        box2 {[type]} -- Second list of boxes
+        input_mask {[type]} -- Zero-One indicating which boxes to compute
+        config {[type]} -- dict containing hyperparameters
+    
+    Returns:
+        [type] -- [description]
+    """
+
     
     xmin = K.maximum(box1[0], box2[0])
     ymin = K.maximum(box1[1], box2[1])
@@ -469,5 +506,14 @@ def softmax(x, axis=-1):
 
 
 def sigmoid(x):
+    """Sigmoid function
+    
+    Arguments:
+        x {[type]} -- input
+    
+    Returns:
+        [type] -- sigmoid(x)
+    """
+
 
     return 1/(1+np.exp(-x))

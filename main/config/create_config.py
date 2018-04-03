@@ -75,8 +75,14 @@ def squeezeDet_config(name):
 
     return cfg
 
-#creates a config and saves it
+
 def create_config_from_dict(dictionary = {}, name="squeeze.config"):
+    """Creates a config and saves it
+    
+    Keyword Arguments:
+        dictionary {dict} -- [description] (default: {{}})
+        name {str} -- [description] (default: {"squeeze.config"})
+    """
 
     cfg = squeezeDet_config(name)
 
@@ -101,6 +107,14 @@ def save_dict(dict, name="squeeze.config"):
 
 
 def load_dict(path):
+    """Loads a dictionary from a given path name
+    
+    Arguments:
+        path {[type]} -- string of path
+    
+    Returns:
+        [type] -- [description]
+    """
 
     with open(path, "r") as f:
         cfg = json.load(f)  ### this loads the array from .json format
