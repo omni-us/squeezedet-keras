@@ -95,9 +95,15 @@ class SqueezeDet():
         pred_reshaped = Reshape((self.config.ANCHORS, -1))(preds)
 
         #pad for loss function so y_pred and y_true have the same dimensions, wrap in lambda layer
-        pred_padded = Lambda(self._pad)( pred_reshaped)
+        #pred_padded = Lambda(self._pad, arguments={})( pred_reshaped)
 
-        model = Model(inputs=input_layer, outputs=pred_padded)
+
+        #padding = np.zeros((3,2)) 
+        #padding[2,1] = 10
+
+        #pred_padded = Lambda( lambda x: __import__('tensorflow').pad(x, padding, "CONSTANT"))(pred_reshaped)
+
+        model = Model(inputs=input_layer, outputs=pred_reshaped)
 
 
         return model

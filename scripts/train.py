@@ -5,6 +5,7 @@
 # Organisation: searchInk
 # Email: christopher@searchink.com
 
+from main.model.modelLoading import load_only_possible_weights
 
 from main.model.squeezeDet import  SqueezeDet
 from main.model.dataGenerator import generator_from_data_path
@@ -22,6 +23,7 @@ import pickle
 from main.config.create_config import load_dict
 from main.model.loss import losses
 
+
 #global variables can be set by optional arguments
 #TODO: Makes proper variables in train() instead of global arguments.
 
@@ -38,7 +40,8 @@ def train(img_file = "img_train.txt",
         NOREDUCELRONPLATEAU = 0,
         VERBOSE=False,
         CONFIG = "squeeze.config",
-        INITFROMCONFIG=0):
+        INITFROMCONFIG=0,
+        xaml_file=None):
 
     """Def trains a Keras model of SqueezeDet and stores the checkpoint after each epoch
     """
@@ -181,11 +184,19 @@ def train(img_file = "img_train.txt",
 
 
     #if you just want to load the hdf5 file containing weights and architecture
-    if not INITFROMCONFIG:
+    if not INITFROMCONFIG and yaml_file is not None:
         print("Architecture and weights initialized from {}".format(init_file))
 
-        model = load_model(init_file)
+        #model = load_model(init_file)
 
+        from keras.models import model_from_yaml
+
+        with open(yaml_file, "r") as m:
+            yaml_string = m.read()
+
+        model = model_from_yaml(yaml_string)
+
+        load_only_possible_weights(model, init_file, verbose=VERBOSE)
 
     else:
 
@@ -196,12 +207,15 @@ def train(img_file = "img_train.txt",
         #if file was provided load possible weights
         if not init_file is None:
 
-            from main.model.modelLoading import load_only_possible_weights
             print("Weights initialized by name from {}".format(init_file))
 
             load_only_possible_weights(model, init_file, verbose=VERBOSE)
 
-            
+    yaml_string = model.to_yaml()
+
+    with open(log_dir_name +"/model.yaml", "w") as m:
+        m.write(yaml_string)
+        
     #print keras model summary
     if VERBOSE:
         print(model.summary())
@@ -275,6 +289,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--gt", help="file of full path names for the corresponding training gts. DEFAULT: gt_train.txt", default="gt_train.txt")
     parser.add_argument("--steps",  type=int, help="steps per epoch. DEFAULT: #imgs/ batch size")
+    parser.add_argument("--yaml", help="YAML file containing a models architecture.")
     parser.add_argument("--optimizer",  help="Which optimizer to use. DEFAULT: SGD with Momentum and lr decay OPTIONS: \
     sgd, adam, adagrad, rmsprop", default="sgd", choices=["sgd", "adam", "adagrad", "rmsprop"])
     parser.add_argument("--logdir", help="dir with checkpoints and loggings. DEFAULT: ./log", default="./log")
@@ -286,7 +301,7 @@ if __name__ == "__main__":
     training starts from random init.")
     parser.add_argument("--no-reduced-lr",help="If added, disables automatics reduction of learning rate.",action='store_true')
     parser.add_argument("--verbose",  help="If added, prints additional information.",action='store_true')
-    parser.add_argument("--init-from-config",  help="If added, instead of loading the hdf5 file, it creates a model \
+    parser.add_argument("--init-from-config",  help="If added, instead of loading the yaml file, it creates a model \
     specified in the config, and loads the possible weights.",action='store_true')
 
     args = parser.parse_args()
@@ -309,4 +324,5 @@ if __name__ == "__main__":
         GPUS = args.gpus,
         NOREDUCELRONPLATEAU = args.no_reduced_lr,
         VERBOSE= args.config,
-        INITFROMCONFIG=args.init_from_config)
+        INITFROMCONFIG=args.init_from_config,
+        yaml_file = args.yaml)

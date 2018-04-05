@@ -34,7 +34,7 @@ def eval(img_file = "img_val.txt",
         STARTWITH = None,
         CONFIG = "squeeze.config",
         TESTING = False
-        ):
+        yaml_file = None):
 
     """
     Checks for keras checkpoints in a tensorflow dir and evaluates losses and given metrics. Also creates visualization and
@@ -234,15 +234,25 @@ def eval(img_file = "img_val.txt",
 
     #try from first checkpoint
 
-    try:
+    
 
-        model = load_model(sorted(os.listdir(checkpoint_dir)[0]))
         
-    except Exception as e:
+    if yaml_file is None:
         
         squeeze = SqueezeDet(cfg)
         model = squeeze.model
     
+    else:
+
+        from keras.models import model_from_yaml
+
+        with open(yaml_file, "r") as m:
+            yaml_string = m.read()
+
+        model = model_from_yaml(yaml_string)
+
+        load_only_possible_weights(model, init_file, verbose=VERBOSE)
+
     #instantiate losses
     ls = losses(cfg)
     
@@ -677,6 +687,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_gt", help="file of full path names for the corresponding test gts. DEFAULT: gt_test.txt",\
     default="gt_test.txt")
     parser.add_argument("--epochs", type=int, help="number of epochs to evaluate before terminating. DEFAULT: 300", default=300)
+    parser.add_argument("--yaml", help="YAML file containing a model's architecture.")
 
     parser.add_argument("--steps",  type=int, help="steps to evaluate. DEFAULT: #imgs/ batch_size")
     parser.add_argument("--gpu",  help="gpu to use. DEFAULT: 1", default="1")
@@ -702,4 +713,5 @@ if __name__ == "__main__":
         steps = args.steps,
         STARTWITH = args.init,
         CONFIG = args.config,
-        TESTING = args.testing)
+        TESTING = args.testing,
+        xaml_file = args.yaml)
