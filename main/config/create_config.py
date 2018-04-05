@@ -13,7 +13,7 @@ def squeezeDet_config(name):
     cfg = edict()
 
     #we only care about these, others are omiited
-    cfg.CLASS_NAMES = ['cyclist', 'pedestrian', 'car']
+    cfg.CLASS_NAMES = ['order']
 
     # number of categories to classify
     cfg.CLASSES = len(cfg.CLASS_NAMES)
@@ -33,8 +33,8 @@ def squeezeDet_config(name):
 
 
     #image properties
-    cfg.IMAGE_WIDTH           = 1248
-    cfg.IMAGE_HEIGHT          = 384
+    cfg.IMAGE_WIDTH           = 624
+    cfg.IMAGE_HEIGHT          = 768
     cfg.N_CHANNELS            = 3
 
     #batch sizes
@@ -62,16 +62,16 @@ def squeezeDet_config(name):
     cfg.FINAL_THRESHOLD       = 0.0
 
     
-    cfg.ANCHOR_SEED = np.array([[  36.,  37.], [ 366., 174.], [ 115.,  59.],
-                                [ 162.,  87.], [  38.,  90.], [ 258., 173.],
-                                [ 224., 108.], [  78., 170.], [  72.,  43.]])
+    cfg.ANCHOR_SEED = np.array([[622., 90.], [622., 20.], [622., 39.],
+                             [622., 570.], [622., 327.], [622., 444.],
+                             [622., 212.], [622., 130.], [622., 60.]])
 
 
 
     cfg.ANCHOR_PER_GRID       = len(cfg.ANCHOR_SEED)
 
-    cfg.ANCHORS_HEIGHT = 24
-    cfg.ANCHORS_WIDTH = 78
+    cfg.ANCHORS_HEIGHT = 48
+    cfg.ANCHORS_WIDTH = 39
 
     return cfg
 

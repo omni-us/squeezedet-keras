@@ -256,11 +256,6 @@ class SqueezeDet():
 
         #number of objects. Used to normalize bbox and classification loss
         num_objects = K.sum(input_mask)
-
-
-        #before computing the losses we need to slice the network outputs
-
-        #number of class probabilities, n classes for each anchor
         num_class_probs = mc.ANCHOR_PER_GRID * mc.CLASSES
 
         #number of confidence scores, one for each anchor + class probs

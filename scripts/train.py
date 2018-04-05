@@ -12,7 +12,7 @@ import keras.backend as K
 from keras import optimizers
 import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
-from main.model.modelLoading import load_only_possible_weights
+from keras.models import load_model
 from main.model.multi_gpu_model_checkpoint import  ModelCheckpointMultiGPU
 import argparse
 import os
@@ -20,26 +20,26 @@ import gc
 from keras.utils import multi_gpu_model
 import pickle
 from main.config.create_config import load_dict
+from main.model.loss import losses
 
 #global variables can be set by optional arguments
 #TODO: Makes proper variables in train() instead of global arguments.
-img_file = "img_train.txt"
-gt_file = "gt_train.txt"
-log_dir_name = './log'
-init_file = "imagenet.h5"
-EPOCHS = 100
-STEPS = None
-OPTIMIZER = "default"
-CUDA_VISIBLE_DEVICES = "0"
-GPUS = 1
-PRINT_TIME = 0
-REDUCELRONPLATEAU = True
-VERBOSE=False
-
-CONFIG = "squeeze.config"
 
 
-def train():
+def train(img_file = "img_train.txt",
+        gt_file = "gt_train.txt",
+        log_dir_name = './log',
+        init_file = None,
+        EPOCHS = 300,
+        STEPS = None,
+        OPTIMIZER = "SGD",
+        CUDA_VISIBLE_DEVICES = "0",
+        GPUS = 1,
+        NOREDUCELRONPLATEAU = 0,
+        VERBOSE=False,
+        CONFIG = "squeeze.config",
+        INITFROMCONFIG=0):
+
     """Def trains a Keras model of SqueezeDet and stores the checkpoint after each epoch
     """
 
@@ -59,7 +59,6 @@ def train():
 
     tf.gfile.MakeDirs(tb_dir)
     tf.gfile.MakeDirs(checkpoint_dir)
-
 
 
 
@@ -86,7 +85,7 @@ def train():
     cfg.OPTIMIZER = OPTIMIZER
     cfg.CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES
     cfg.GPUS = GPUS
-    cfg.REDUCELRONPLATEAU = REDUCELRONPLATEAU
+    cfg.NOREDUCELRONPLATEAU = NOREDUCELRONPLATEAU
 
 
 
@@ -127,9 +126,6 @@ def train():
     K.set_session(sess)
 
 
-    #instantiate model
-    squeeze = SqueezeDet(cfg)
-
 
     #callbacks
     cb = []
@@ -138,32 +134,30 @@ def train():
     #set optimizer
     #multiply by number of workers do adjust for increased batch size
     if OPTIMIZER == "adam":
-        opt = optimizers.Adam(lr=0.001 * GPUS,  clipnorm=cfg.MAX_GRAD_NORM)
-        cfg.LR= 0.001 * GPUS
+        opt = optimizers.Adam(lr=cfg.LEARNING_RATE,  clipnorm=cfg.MAX_GRAD_NORM)
+        cfg.LR= 0.001 
     if OPTIMIZER == "rmsprop":
-        opt = optimizers.RMSprop(lr=0.001 * GPUS,  clipnorm=cfg.MAX_GRAD_NORM)
-        cfg.LR= 0.001 * GPUS
+        opt = optimizers.RMSprop(lr=cfg.LEARNING_RATE ,  clipnorm=cfg.MAX_GRAD_NORM)
+        cfg.LR= 0.001 
 
     if OPTIMIZER == "adagrad":
-        opt = optimizers.Adagrad(lr=1.0 * GPUS,  clipnorm=cfg.MAX_GRAD_NORM)
-        cfg.LR = 1 * GPUS
+        opt = optimizers.Adagrad(lr=cfg.LEARNING_RATE ,  clipnorm=cfg.MAX_GRAD_NORM)
+        cfg.LR = 1
 
     #use default is nothing is given
     else:
 
 
         # create sgd with momentum and gradient clipping
-        opt = optimizers.SGD(lr=cfg.LEARNING_RATE * GPUS, decay=0, momentum=cfg.MOMENTUM,
+        opt = optimizers.SGD(lr=cfg.LEARNING_RATE , decay=0, momentum=cfg.MOMENTUM,
                              nesterov=False, clipnorm=cfg.MAX_GRAD_NORM)
 
         cfg.LR = cfg.LEARNING_RATE  * GPUS
 
 
-        print("Learning rate: {}".format(cfg.LEARNING_RATE * GPUS))
+        print("Learning rate: {}".format(cfg.LEARNING_RATE))
 
-        #add manuall learning rate decay
-        #lrCallback = LearningRateScheduler(schedule)
-        #cb.append(lrCallback)
+
 
 
     #save config file to log dir
@@ -178,39 +172,43 @@ def train():
     cb.append(tbCallBack)
 
     #if flag was given, add reducelronplateu callback
-    if REDUCELRONPLATEAU:
+    if not NOREDUCELRONPLATEAU:
 
         reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.1,verbose=1,
                                       patience=5, min_lr=0.0)
 
         cb.append(reduce_lr)
 
+
+    #if you just want to load the hdf5 file containing weights and architecture
+    if not INITFROMCONFIG:
+        print("Architecture and weights initialized from {}".format(init_file))
+
+        model = load_model(init_file)
+
+
+    else:
+
+        print("Initialized architecture from config.")
+        #instantiate model with random weights
+        model = SqueezeDet(cfg).model
+
+        #if file was provided load possible weights
+        if not init_file is None:
+
+            from main.model.modelLoading import load_only_possible_weights
+            print("Weights initialized by name from {}".format(init_file))
+
+            load_only_possible_weights(model, init_file, verbose=VERBOSE)
+
+            
     #print keras model summary
     if VERBOSE:
-        print(squeeze.model.summary())
+        print(model.summary())
 
-    if init_file != "none":
+    
 
-
-        print("Weights initialized by name from {}".format(init_file))
-
-        load_only_possible_weights(squeeze.model, init_file, verbose=VERBOSE)
-
-        
-        #since these layers already existed in the ckpt they got loaded, you can reinitialized them. TODO set flag for that
-
-        """
-        for layer in squeeze.model.layers:
-            for v in layer.__dict__:
-                v_arg = getattr(layer, v)
-                if "fire10" in layer.name or "fire11" in layer.name or "conv12" in layer.name:
-                    if hasattr(v_arg, 'initializer'):
-                        initializer_method = getattr(v_arg, 'initializer')
-                        initializer_method.run(session=sess)
-                        #print('reinitializing layer {}.{}'.format(layer.name, v))
-        
-
-        """
+    ls = losses(cfg)
 
     #create train generator
     train_generator = generator_from_data_path(img_names, gt_names, config=cfg)
@@ -221,7 +219,7 @@ def train():
         #use multigpu model checkpoint
         ckp_saver = ModelCheckpointMultiGPU(checkpoint_dir + "/model.{epoch:02d}-{loss:.2f}.hdf5", monitor='loss', verbose=0,
                                     save_best_only=False,
-                                    save_weights_only=True, mode='auto', period=1)
+                                    save_weights_only=False, mode='auto', period=1)
 
         cb.append(ckp_saver)
 
@@ -229,9 +227,10 @@ def train():
         print("Using multi gpu support with {} GPUs".format(GPUS))
 
         # make the model parallel
-        parallel_model = multi_gpu_model(squeeze.model, gpus=GPUS)
+        parallel_model = multi_gpu_model(model, gpus=GPUS)
         parallel_model.compile(optimizer=opt,
-                              loss=[squeeze.loss], metrics=[squeeze.loss_without_regularization, squeeze.bbox_loss, squeeze.class_loss, squeeze.conf_loss])
+                              loss=[ls.total_loss], metrics=[ls.loss_without_regularization,
+                               ls.bbox_loss, ls.class_loss, ls.conf_loss])
 
 
 
@@ -245,70 +244,69 @@ def train():
         # add a checkpoint saver
         ckp_saver = ModelCheckpoint(checkpoint_dir + "/model.{epoch:02d}-{loss:.2f}.hdf5", monitor='loss', verbose=0,
                                     save_best_only=False,
-                                    save_weights_only=True, mode='auto', period=1)
+                                    save_weights_only=False, mode='auto', period=1)
         cb.append(ckp_saver)
 
 
         print("Using single GPU")
         #compile model from squeeze object, loss is not a function of model directly
-        squeeze.model.compile(optimizer=opt,
-                              loss=[squeeze.loss], metrics=[squeeze.loss_without_regularization, squeeze.bbox_loss, squeeze.class_loss, squeeze.conf_loss])
+        model.compile(optimizer=opt,
+                              loss=[ls.total_loss], metrics=[ls.loss_without_regularization,
+                               ls.bbox_loss, ls.class_loss, ls.conf_loss])
 
         #actually do the training
-        squeeze.model.fit_generator(train_generator, epochs=EPOCHS,
+        model.fit_generator(train_generator, epochs=EPOCHS,
                                         steps_per_epoch=nbatches_train, callbacks=cb)
 
+    try:
+        gc.collect()
 
-    gc.collect()
-
-
+    except:
+        pass
 if __name__ == "__main__":
 
 
 
     #parse arguments
     parser = argparse.ArgumentParser(description='Train squeezeDet model.')
+    parser.add_argument("--img", help="file of full path names for the training images. DEFAULT: img_train.txt", default="img_train.txt")
+    parser.add_argument("--epochs", type=int, help="number of epochs. DEFAULT: 300", default=300)
+    parser.add_argument("--config",   help="Dictionary of all the hyperparameters.  DEFAULT: squeeze.config", default="squeeze.config")
+
+    parser.add_argument("--gt", help="file of full path names for the corresponding training gts. DEFAULT: gt_train.txt", default="gt_train.txt")
     parser.add_argument("--steps",  type=int, help="steps per epoch. DEFAULT: #imgs/ batch size")
-    parser.add_argument("--epochs", type=int, help="number of epochs. DEFAULT: 100")
-    parser.add_argument("--optimizer",  help="Which optimizer to use. DEFAULT: SGD with Momentum and lr decay OPTIONS: SGD, ADAM")
-    parser.add_argument("--logdir", help="dir with checkpoints and loggings. DEFAULT: ./log")
-    parser.add_argument("--img", help="file of full path names for the training images. DEFAULT: img_train.txt")
-    parser.add_argument("--gt", help="file of full path names for the corresponding training gts. DEFAULT: gt_train.txt")
-    parser.add_argument("--gpu",  help="which gpu to use. DEFAULT: 0")
-    parser.add_argument("--gpus", type=int,  help="number of GPUS to use when using multi gpu support. Overwrites gpu flag. DEFAULT: 1")
-    parser.add_argument("--init",  help="keras checkpoint to start training from. If argument is none, training starts from the beginnin. DEFAULT: init_weights.h5")
-    parser.add_argument("--resume", type=bool, help="Resumes training and does not delete old dirs. DEFAULT: False")
-    parser.add_argument("--reducelr", type=bool, help="Add ReduceLrOnPlateu callback to training. DEFAULT: True")
-    parser.add_argument("--verbose", type=bool,  help="Prints additional information. DEFAULT: False")
-    parser.add_argument("--config",   help="Dictionary of all the hyperparameters. DEFAULT: squeeze.config")
+    parser.add_argument("--optimizer",  help="Which optimizer to use. DEFAULT: SGD with Momentum and lr decay OPTIONS: \
+    sgd, adam, adagrad, rmsprop", default="sgd", choices=["sgd", "adam", "adagrad", "rmsprop"])
+    parser.add_argument("--logdir", help="dir with checkpoints and loggings. DEFAULT: ./log", default="./log")
+   
+    parser.add_argument("--gpu",  help="which gpu to use. DEFAULT: 0", default="0")
+    parser.add_argument("--gpus", type=int, \
+     help="number of GPUS to use when using multi gpu support. Overwrites gpu flag. DEFAULT: 1", default=1)
+    parser.add_argument("--init",  help="keras checkpoint to start training from. If argument is not given \
+    training starts from random init.")
+    parser.add_argument("--no-reduced-lr",help="If added, disables automatics reduction of learning rate.",action='store_true')
+    parser.add_argument("--verbose",  help="If added, prints additional information.",action='store_true')
+    parser.add_argument("--init-from-config",  help="If added, instead of loading the hdf5 file, it creates a model \
+    specified in the config, and loads the possible weights.",action='store_true')
 
     args = parser.parse_args()
 
 
-    #set global variables
-    if args.img is not None:
-        img_file = args.img
-    if args.gt is not None:
-        gt_file = args.gt
-    if args.logdir is not None:
-        log_dir_name = args.logdir
-    if args.gpu is not None:
-        CUDA_VISIBLE_DEVICES = args.gpu
-    if args.epochs is not None:
-        EPOCHS = args.epochs
-    if args.steps is not None:
-        STEPS = args.steps
-    if args.optimizer is not None:
-        OPTIMIZER = args.optimizer.lower()
-    if args.init is not None:
-        init_file = args.init
-    if args.gpus is not None:
-        GPUS= args.gpus
-    if args.reducelr is not None:
-        REDUCELRONPLATEAU = args.reducelr
-    if args.verbose is not None:
-        VERBOSE=args.verbose
-    if args.config is not None:
-        CONFIG = args.config
+    args_vars = vars(args)
 
-    train()
+    #print(args_vars)
+
+    
+
+    train(img_file = args.img,
+        gt_file = args.gt,
+        log_dir_name = args.logdir,
+        init_file = args.init,
+        EPOCHS = args.epochs,
+        STEPS = args.steps,
+        OPTIMIZER = args.optimizer,
+        CUDA_VISIBLE_DEVICES = args.gpu,
+        GPUS = args.gpus,
+        NOREDUCELRONPLATEAU = args.no_reduced_lr,
+        VERBOSE= args.config,
+        INITFROMCONFIG=args.init_from_config)

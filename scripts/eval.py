@@ -5,7 +5,6 @@
 # Organisation: searchInk
 # Email: christopher@searchink.com
 
-
 from main.model.squeezeDet import  SqueezeDet
 from main.model.dataGenerator import generator_from_data_path, visualization_generator_from_data_path
 import keras.backend as K
@@ -19,33 +18,29 @@ import numpy as np
 import argparse
 from keras.utils import multi_gpu_model
 from main.config.create_config import load_dict
+from main.model.loss import losses
+from keras.models import load_model
 
-#default values for some variables
-#TODO: uses them as proper parameters instead of global variables
-img_file = "img_val.txt"
-gt_file = "gt_val.txt"
-img_file_test = "img_test.txt"
-gt_file_test = "gt_test.txt"
-log_dir_name = "./log"
-checkpoint_dir = './log/checkpoints'
-tensorboard_dir = './log/tensorboard_val'
-tensorboard_dir_test = './log/tensorboard_test'
-TIMEOUT = 20
-EPOCHS = 100
-CUDA_VISIBLE_DEVICES = "1"
-steps = None
-GPUS = 1
-STARTWITH = None
-CONFIG = "squeeze.config"
-TESTING = False
+def eval(img_file = "img_val.txt",
+        gt_file = "gt_val.txt",
+        img_file_test = "img_test.txt",
+        gt_file_test = "gt_test.txt",
+        log_dir_name = "./log",
+        TIMEOUT = 20,
+        EPOCHS = 300,
+        CUDA_VISIBLE_DEVICES = "1",
+        steps = None,
+        GPUS = 1,
+        STARTWITH = None,
+        CONFIG = "squeeze.config",
+        TESTING = False
+        ):
 
-
-
-def eval():
     """
     Checks for keras checkpoints in a tensorflow dir and evaluates losses and given metrics. Also creates visualization and
     writes everything to tensorboard.
     """
+
 
     #create config object
     cfg = load_dict(CONFIG)
@@ -222,6 +217,10 @@ def eval():
 
     merged = tf.summary.merge_all()
 
+    checkpoint_dir = log_dir_name + '/checkpoints'
+    tensorboard_dir = log_dir_name + '/tensorboard_val'
+    tensorboard_dir_test = log_dir_name + '/tensorboard_test'
+
     if STARTWITH is None:
         #check for tensorboard dir and delete old stuff
         if tf.gfile.Exists(tensorboard_dir):
@@ -232,46 +231,46 @@ def eval():
 
 
     #instantiate model
-    squeeze = SqueezeDet(cfg)
 
+    #try from first checkpoint
+
+    try:
+
+        model = load_model(sorted(os.listdir(checkpoint_dir)[0]))
+        
+    except Exception as e:
+        
+        squeeze = SqueezeDet(cfg)
+        model = squeeze.model
+    
+    #instantiate losses
+    ls = losses(cfg)
+    
     #dummy optimizer for compilation
     sgd = optimizers.SGD(lr=cfg.LEARNING_RATE, decay=0, momentum=cfg.MOMENTUM,
                          nesterov=False, clipnorm=cfg.MAX_GRAD_NORM)
 
+    #compile model, loss is not a function of model directly
+    
+    model.compile(optimizer=sgd,
+                            loss=[ls.total_loss], metrics=[ls.bbox_loss, ls.class_loss,
+                                                        ls.conf_loss, ls.loss_without_regularization])
 
-
-
-    if GPUS > 1:
-
-        #parallelize model
-        model = multi_gpu_model(squeeze.model, gpus=GPUS)
-        model.compile(optimizer=sgd,
-                              loss=[squeeze.loss], metrics=[squeeze.bbox_loss, squeeze.class_loss,
-                                                            squeeze.conf_loss, squeeze.loss_without_regularization])
-
-
-    else:
-    #compile model from squeeze object, loss is not a function of model directly
-        squeeze.model.compile(optimizer=sgd,
-                              loss=[squeeze.loss], metrics=[squeeze.bbox_loss, squeeze.class_loss,
-                                                            squeeze.conf_loss, squeeze.loss_without_regularization])
-
-        model = squeeze.model
     #models already evaluated
-    evaluated_models = set()
 
+
+
+
+    evaluated_models = set()
 
 
     #get the best ckpts for test set
 
     best_val_loss_ckpt = None
-
     best_val_loss = np.inf
-
     best_mAP_ckpt = None
-
     best_mAP = -np.inf
-
+    #start timeout counter
     time_out_counter = 0
 
 
@@ -316,13 +315,14 @@ def eval():
                 #load this ckpt
                 current_model= ckpt
                 try:
-                    squeeze.model.load_weights(checkpoint_dir + "/"+ ckpt)
+
+                    model.load_weights(checkpoint_dir + "/"+ ckpt)
 
                 #sometimes model loading files, because the file is still locked, so wait a little bit
                 except OSError as e:
                     print(e)
                     time.sleep(10)
-                    squeeze.model.load_weights(checkpoint_dir + "/" + ckpt)
+                    model.load_weights(checkpoint_dir + "/"+ ckpt)
 
                 # create 2 validation generators, one for metrics and one for object detection evaluation
                 # we have to reset them each time to have the same data, otherwise we'd have to use batch size one.
@@ -333,27 +333,27 @@ def eval():
 
                 print("  Evaluate losses...")
                 #compute losses of whole val set
-                losses = model.evaluate_generator(val_generator_1, steps=nbatches_valid, max_queue_size=10,
+                val_losses = model.evaluate_generator(val_generator_1, steps=nbatches_valid, max_queue_size=10,
                                                          use_multiprocessing=False)
 
 
-                #manually add losses to tensorboard
-                sess.run(loss_assign_ops , {loss_placeholder: losses[0],
-                                            loss_without_regularization_placeholder: losses[4],
-                                            conf_loss_placeholder: losses[3],
-                                            class_loss_placeholder: losses[2],
-                                            bbox_loss_placeholder: losses[1]})
+                #manually add val_losses to tensorboard
+                sess.run(loss_assign_ops , {loss_placeholder: val_losses[0],
+                                            loss_without_regularization_placeholder: val_losses[4],
+                                            conf_loss_placeholder: val_losses[3],
+                                            class_loss_placeholder: val_losses[2],
+                                            bbox_loss_placeholder: val_losses[1]})
 
-                #print losses
-                print("  Losses:")
+                #print val_losses
+                print("  losses:")
                 print("  Loss with regularization: {}   val loss:{} \n     bbox_loss:{} \n     class_loss:{} \n     conf_loss:{}".
-                      format(losses[0], losses[4], losses[1], losses[2], losses[3]) )
+                      format(val_losses[0], val_losses[4], val_losses[1], val_losses[2], val_losses[3]) )
 
-                line += "{};{};{};{};{};".format(losses[0] , losses[4], losses[1], losses[2], losses[3])
+                line += "{};{};{};{};{};".format(val_losses[0] , val_losses[4], val_losses[1], val_losses[2], val_losses[3])
 
                 #save model with smallest loss
-                if losses[4] < best_val_loss:
-                    best_val_loss = losses[4]
+                if val_losses[4] < best_val_loss:
+                    best_val_loss = val_losses[4]
                     best_val_loss_ckpt = current_model
 
 
@@ -608,7 +608,7 @@ def eval():
 
             #load this ckpt
             current_model = ckpt
-            squeeze.model.load_weights(checkpoint_dir + "/"+ ckpt)
+            model.load_weights(checkpoint_dir + "/"+ ckpt)
 
             # create 2 validation generators, one for metrics and one for object detection evaluation
             # we have to reset them each time to have the same data
@@ -618,20 +618,20 @@ def eval():
 
             print("  Evaluate losses...")
             #compute losses of whole val set
-            losses = model.evaluate_generator(val_generator_1, steps=nbatches_test, max_queue_size=10,
+            val_losses = model.evaluate_generator(val_generator_1, steps=nbatches_test, max_queue_size=10,
                                                      use_multiprocessing=False)
 
 
             #manually add losses to tensorboard
-            sess.run(loss_assign_ops , {loss_placeholder: losses[0],
-                                        loss_without_regularization_placeholder: losses[4],
-                                        conf_loss_placeholder: losses[3],
-                                        class_loss_placeholder: losses[2],
-                                        bbox_loss_placeholder: losses[1]})
+            sess.run(loss_assign_ops , {loss_placeholder: val_losses[0],
+                                        loss_without_regularization_placeholder: val_losses[4],
+                                        conf_loss_placeholder: val_losses[3],
+                                        class_loss_placeholder: val_losses[2],
+                                        bbox_loss_placeholder: val_losses[1]})
 
             print("  Losses:")
-            print("  Loss with regularization: {}   val loss:{} \n     bbox_loss:{} \n     class_loss:{} \n     conf_loss:{}".
-                  format(losses[0], losses[4], losses[1], losses[2], losses[3]) )
+            print("  Loss with regularization: {}   loss:{} \n     bbox_loss:{} \n     class_loss:{} \n     conf_loss:{}".
+                  format(val_losses[0], val_losses[4], val_losses[1], val_losses[2], val_losses[3]) )
 
 
 
@@ -667,68 +667,39 @@ if __name__ == "__main__":
 
     #argument parsing
     parser = argparse.ArgumentParser(description='Evaluate squeezeDet keras checkpoints after each epoch on validation set.')
-    parser.add_argument("--logdir", help="dir with checkpoints and loggings. DEFAULT: ./log")
-    parser.add_argument("--val_img", help="file of full path names for the validation images. DEFAULT: img_val.txt")
-    parser.add_argument("--val_gt", help="file of full path names for the corresponding validation gts. DEFAULT: gt_val.txt")
-    parser.add_argument("--test_img", help="file of full path names for the test images. DEFAULT: img_test.txt")
-    parser.add_argument("--test_gt", help="file of full path names for the corresponding test gts. DEFAULT: gt_test.txt")
-    parser.add_argument("--steps",  type=int, help="steps to evaluate. DEFAULT: length of imgs/ batch_size")
-    parser.add_argument("--gpu",  help="gpu to use. DEFAULT: 1")
-    parser.add_argument("--gpus",  type=int, help="gpus to use for multigpu usage. DEFAULT: 1")
-    parser.add_argument("--epochs", type=int, help="number of epochs to evaluate before terminating. DEFAULT: 100")
-    parser.add_argument("--timeout", type=int, help="number of minutes before the evaluation script stops after no new checkpoint has been detected. DEFAULT: 20")
-    parser.add_argument("--init" , help="start evaluating at a later checkpoint")
-    parser.add_argument("--config",   help="Dictionary of all the hyperparameters. DEFAULT: squeeze.config")
-    parser.add_argument("--testing",   help="Run eval on test set. DEFAULT: False")
+    parser.add_argument("--logdir", help="dir with checkpoints and loggings. DEFAULT: ./log", default="./log")
+    parser.add_argument("--val_img", help="file of full path names for the validation images. DEFAULT: img_val.txt",\
+     default="img_val.txt")
+    parser.add_argument("--val_gt", help="file of full path names for the corresponding validation gts. DEFAULT: gt_val.txt",\
+    default="gt_val.txt")
+    parser.add_argument("--test_img", help="file of full path names for the test images. DEFAULT: img_test.txt",\
+     default="img_test.txt")
+    parser.add_argument("--test_gt", help="file of full path names for the corresponding test gts. DEFAULT: gt_test.txt",\
+    default="gt_test.txt")
+    parser.add_argument("--epochs", type=int, help="number of epochs to evaluate before terminating. DEFAULT: 300", default=300)
+
+    parser.add_argument("--steps",  type=int, help="steps to evaluate. DEFAULT: #imgs/ batch_size")
+    parser.add_argument("--gpu",  help="gpu to use. DEFAULT: 1", default="1")
+    parser.add_argument("--timeout", type=int, help="number of minutes before the evaluation script stops after \
+    no new checkpoint has been detected. DEFAULT: 20", default=20)
+    parser.add_argument("--init" , help="Start evaluating at the given checkpoint and skip the ones before.")
+    parser.add_argument("--config",   help="Dictionary of all the hyperparameters. DEFAULT: squeeze.config", \
+    default="squeeze.config")
+    parser.add_argument("--testing",   help="If added, run eval on test set. DEFAULT: False", action="store_true")
 
     args = parser.parse_args()
 
-    #set global variables according to optional arguments
-    if args.logdir is not None:
-        log_dir_name = args.logdir
-        checkpoint_dir = log_dir_name + '/checkpoints'
-        tensorboard_dir = log_dir_name + '/tensorboard_val'
-
-    if args.val_img is not None:
-        img_file = args.val_img
-    if args.val_gt is not None:
-        gt_file = args.val_gt
-
-    if args.test_img is not None:
-        img_file_test = args.test_img
-    if args.test_gt is not None:
-        gt_file_test = args.test_gt
-
-    if args.gpu is not None:
-        CUDA_VISIBLE_DEVICES = args.gpu
-    if args.epochs is not None:
-        EPOCHS = args.epochs
-    if args.timeout is not None:
-        TIMEOUT = args.timeout
-
-    if args.gpus is not None:
-        GPUS = args.gpus
 
 
-        #if there were no GPUS explicitly given, take the last ones
-        #the assumption is, that we use as many gpus for evaluation as for training
-        #so we have to hide the other gpus to not try to allocate memory there
-        if args.gpu is None:
-            CUDA_VISIBLE_DEVICES = ""
-            for i in range(GPUS, 2*GPUS):
-                CUDA_VISIBLE_DEVICES += str(i) + ","
-            print(CUDA_VISIBLE_DEVICES)
-
-    if args.init is not None:
-        STARTWITH = args.init
-
-    if args.steps is not None:
-        steps = args.steps
-
-    if args.config is not None:
-        CONFIG = args.config
-
-    if args.testing is not None:
-        TESTING = args.testing
-
-    eval()
+    eval(img_file = args.val_img,
+        gt_file = args.val_gt,
+        img_file_test = args.test_img,
+        gt_file_test = args.test_gt,
+        log_dir_name = args.logdir,
+        TIMEOUT = args.timeout,
+        EPOCHS = 300,
+        CUDA_VISIBLE_DEVICES = args.gpu,
+        steps = args.steps,
+        STARTWITH = args.init,
+        CONFIG = args.config,
+        TESTING = args.testing)
