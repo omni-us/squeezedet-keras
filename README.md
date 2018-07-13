@@ -63,7 +63,7 @@ arguments you can pass
 
 * Create a config file
 
-	`python ../../main/utils/create_config.py`
+	`python ../../main/config/create_config.py`
 
 	Depending on the GPU change the batch size inside **squeeze.config** and other parameters like learning rate.
 
