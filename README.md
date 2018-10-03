@@ -3,7 +3,7 @@
 ## _SqueezeDet:_ Unified, Small, Low Power Fully Convolutional Neural Networks for Real-Time Object Detection for Autonomous Driving
 By Bichen Wu, Alvin Wan, Forrest Iandola, Peter H. Jin, Kurt Keutzer (UC Berkeley & DeepScale)
 
-This repository contains a Keras implementation of SqueezeDet, a convolutional neural network based object detector described in this paper: https://arxiv.org/abs/1612.01051. If you find this work useful for your research, please consider citing:
+This repository contains a Keras implementation of SqueezeDet, a convolutional neural network based object detector described in this paper: https://arxiv.org/abs/1612.01051. The original implementation can be found [here](https://github.com/BichenWuUCB/squeezeDet). If you find this work useful for your research, please consider citing:
 
     @inproceedings{squeezedet,
         Author = {Bichen Wu and Forrest Iandola and Peter H. Jin and Kurt Keutzer},
