@@ -55,7 +55,7 @@ def load_only_possible_weights(model, weights_file, verbose = False):
                     min_dims = np.minimum(model_shape, file_shape)
 
                     #build minimum indices
-                    min_idx = [slice(0, x) for x in min_dims]
+                    min_idx = tuple(slice(0, x) for x in min_dims)
 
                     #set to weights of loaded file
                     w_and_b[0][min_idx] = f[kb][()][min_idx]
@@ -76,7 +76,7 @@ def load_only_possible_weights(model, weights_file, verbose = False):
                     min_dims = np.minimum(model_shape, file_shape)
 
                     #build minimum indices
-                    min_idx = [ slice(0,x) for x in min_dims]
+                    min_idx = tuple(slice(0,x) for x in min_dims)
 
                     # set to weights of loaded file
                     w_and_b[1][min_idx] = f[kb][()][min_idx]
